@@ -1,5 +1,6 @@
 from youtube_transcript_api import YouTubeTranscriptApi
 
+
 def extract_transcript(youtube_video_url):
     try:
         video_id = youtube_video_url.split("=")[-1]

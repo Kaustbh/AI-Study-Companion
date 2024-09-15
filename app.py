@@ -1,18 +1,21 @@
-import streamlit as st
-import sqlite3
-import os
-from dotenv import load_dotenv
-import google.generativeai as genai
-from youtube_transcript import extract_transcript
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 import io
-from fpdf import FPDF
+import os
+import sqlite3
 import tempfile
+
+import streamlit as st
+import matplotlib.pyplot as plt
+import google.generativeai as genai
+from fpdf import FPDF
+from dotenv import load_dotenv
+from wordcloud import WordCloud
+
+from youtube_transcript import extract_transcript
 
 load_dotenv()
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
 
 def fetch_transcript(video_id):
     conn = sqlite3.connect('youtube_transcripts.db')
@@ -21,6 +24,7 @@ def fetch_transcript(video_id):
     transcript_text = c.fetchone()[0]
     conn.close()
     return transcript_text
+
 
 def generate_notes(transcript_text, subject, custom_prompt=None):
     if custom_prompt:
@@ -51,10 +55,11 @@ def generate_notes(transcript_text, subject, custom_prompt=None):
                 Title: Comprehensive Notes on Data Science and Statistics from YouTube Video Transcript
                 [Data Science-related detailed prompt goes here]
             """
-    
+
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(prompt + transcript_text)
     return response.text
+
 
 def summarize_text(text):
     summary_prompt = """
@@ -64,12 +69,16 @@ def summarize_text(text):
     summary_response = model.generate_content(summary_prompt + text)
     return summary_response.text
 
+
 def create_wordcloud(text):
-    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(
+        text
+    )
     fig, ax = plt.subplots()
     ax.imshow(wordcloud, interpolation='bilinear')
     ax.axis("off")
     return fig
+
 
 def download_text(text, file_name):
     buffer = io.StringIO(text)
@@ -77,8 +86,9 @@ def download_text(text, file_name):
         label="Download Notes as Text File",
         data=buffer.getvalue(),
         file_name=file_name,
-        mime="text/plain"
+        mime="text/plain",
     )
+
 
 def download_pdf(text, file_name):
     # Create PDF
@@ -102,15 +112,25 @@ def download_pdf(text, file_name):
         label=f"Download {file_name}",
         data=pdf_output,
         file_name=file_name,
-        mime="application/pdf"
+        mime="application/pdf",
     )
 
     # Delete the temporary file
     os.remove(tmp_file.name)
+
+
 def main():
     st.title("YouTube Transcript to Detailed Notes Converter")
 
-    subjects = ["Physics", "Chemistry", "Mathematics", "Data Science and Statistics", "Biology", "Economics", "Custom Prompt"]
+    subjects = [
+        "Physics",
+        "Chemistry",
+        "Mathematics",
+        "Data Science and Statistics",
+        "Biology",
+        "Economics",
+        "Custom Prompt",
+    ]
     subject = st.selectbox("Select Subject:", subjects)
 
     youtube_link = st.text_input("Enter YouTube Video Link:")
@@ -122,18 +142,20 @@ def main():
     if youtube_link:
         video_id = youtube_link.split("=")[-1]
         st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
-    
+
     # Initialize session state for detailed notes if it doesn't exist
     if "detailed_notes" not in st.session_state:
         st.session_state.detailed_notes = ""
 
     if st.button("Get Detailed Notes"):
         transcript_text = extract_transcript(youtube_link)
-        
+
         if transcript_text:
             st.success("Transcript extracted successfully!")
-            
-            st.session_state.detailed_notes = generate_notes(transcript_text, subject, custom_prompt)
+
+            st.session_state.detailed_notes = generate_notes(
+                transcript_text, subject, custom_prompt
+            )
             st.markdown("## Detailed Notes:")
             st.write(st.session_state.detailed_notes)
         else:
@@ -145,7 +167,7 @@ def main():
         st.session_state.summary = summary  # Store summary in session state
         st.markdown("## Summary:")
         st.write(st.session_state.summary)
-    
+
     # Show the latest summary if available
     # if "summary" in st.session_state:
     #     st.markdown("## Latest Summary:")
@@ -161,11 +183,9 @@ def main():
     if st.session_state.detailed_notes:
         download_pdf(st.session_state.detailed_notes, "detailed_notes.pdf")
 
-   
 
 if __name__ == "__main__":
     main()
-
 
 
 # https://www.youtube.com/watch?v=dcXqhMqhZUo
